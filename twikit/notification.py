@@ -25,18 +25,26 @@ class Notification:
     from_user : :class:`.User`
         The user who triggered the notification.
     """
+
     def __init__(
-        self, client: Client, data: dict, tweet: Tweet, from_user: User
+        self, client: Client, tweet: Tweet
     ) -> None:
         self._client = client
         self.tweet = tweet
-        self.from_user = from_user
 
-        self.id: str = data['id']
-        self.timestamp_ms: int = int(data['timestampMs'])
-        self.icon: dict = data['icon']
-        self.message: str = data['message']['text']
-
+    # ================================old code-start===============================
+    # def __init__(
+    #     self, client: Client, data: dict, tweet: Tweet, from_user: User
+    # ) -> None:
+    #     self._client = client
+    #     self.tweet = tweet
+    #     self.from_user = from_user
+    #
+    #     self.id: str = data['id']
+    #     self.timestamp_ms: int = int(data['timestampMs'])
+    #     self.icon: dict = data['icon']
+    #     self.message: str = data['message']['text']
+    # ================================old code-end===============================
     def __eq__(self, __value: object) -> bool:
         return isinstance(__value, Notification) and self.id == __value.id
 

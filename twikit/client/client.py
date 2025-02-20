@@ -3792,8 +3792,8 @@ class Client:
             id: User(self, build_user_data(data))
             for id, data in global_objects.get('users', {}).items()
         }
-        tweets = {}
 
+        tweets = {}
         for id, tweet_data in global_objects.get('tweets', {}).items():
             user_id = tweet_data['user_id_str']
             user = users[user_id]
@@ -3802,38 +3802,48 @@ class Client:
 
         notifications = []
 
-        for notification in global_objects.get('notifications', {}).values():
-            user_actions = notification['template']['aggregateUserActionsV1']
-            target_objects = user_actions['targetObjects']
-            if target_objects and 'tweet' in target_objects[0]:
-                tweet_id = target_objects[0]['tweet']['id']
-                tweet = tweets[tweet_id]
-            else:
-                tweet = None
-
-            from_users  = user_actions['fromUsers']
-            if from_users and 'user' in from_users[0]:
-                user_id = from_users[0]['user']['id']
-                user = users[user_id]
-            else:
-                user = None
-
-            notifications.append(Notification(self, notification, tweet, user))
+        #================================old code-start===============================
+        # for notification in global_objects.get('notifications', {}).values():
+        #     user_actions = notification['template']['aggregateUserActionsV1']
+        #     target_objects = user_actions['targetObjects']
+        #     if target_objects and 'tweet' in target_objects[0]:
+        #         tweet_id = target_objects[0]['tweet']['id']
+        #         tweet = tweets[tweet_id]
+        #     else:
+        #         tweet = None
+        #
+        #     from_users  = user_actions['fromUsers']
+        #     if from_users and 'user' in from_users[0]:
+        #         user_id = from_users[0]['user']['id']
+        #         user = users[user_id]
+        #     else:
+        #         user = None
+        #
+        #     notifications.append(Notification(self, notification, tweet, user))
+        # ================================old code-end===============================
+        next_cursor = None
+        previous_cursor = None
 
         entries = find_dict(response, 'entries', find_one=True)[0]
-        cursor_bottom_entry = [
-            i for i in entries
-            if i['entryId'].startswith('cursor-bottom')
-        ]
-        if cursor_bottom_entry:
-            next_cursor = find_dict(cursor_bottom_entry[0], 'value', find_one=True)[0]
-        else:
-            next_cursor = None
+        for entry in entries:
+            if entry['entryId'].startswith('cursor-bottom'):
+                next_cursor = entry['content']['operation']['cursor']['value']
+            elif entry['entryId'].startswith('cursor-top'):
+                previous_cursor = entry['content']['operation']['cursor']['value']
+            elif entry['entryId'].startswith('notification'):
+                # There should be more types waiting to be added
+                # Here we only get reminders related to post replies
+                if 'tweet' in entry['content']['item']['content']:
+                    tweet_id = entry['content']['item']['content']['tweet']['id']
+                    tweet = tweets[tweet_id]
+                    notifications.append(Notification(self, tweet))
 
         return Result(
             notifications,
             partial(self.get_notifications, type, count, next_cursor),
-            next_cursor
+            next_cursor,
+            partial(self.get_notifications, type, count, previous_cursor),
+            previous_cursor
         )
 
     async def search_community(
